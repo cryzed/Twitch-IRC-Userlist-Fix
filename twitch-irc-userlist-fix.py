@@ -48,7 +48,7 @@ def mode(nickname, channel, flags, target, context=hexchat):
 def retrieve_userlist_update(url, channel_key):
     try:
         response = urllib2.urlopen(url)
-    except Exception:
+    except urllib2.URLError:
         return
 
     userlist = json.load(response)['chatters']
