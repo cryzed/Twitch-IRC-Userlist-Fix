@@ -1,5 +1,4 @@
 import json
-import time
 import urllib2
 import hexchat
 import threading
