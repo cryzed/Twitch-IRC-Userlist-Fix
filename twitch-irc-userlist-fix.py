@@ -5,13 +5,13 @@ import threading
 
 __module_name__ = 'Twitch IRC Userlist Fix'
 __module_description__ = 'XChat/HexChat plugin that periodically retrieves the userlist for all joined channels on the Twitch IRC servers from their website. This plugin is needed for some smaller channels in which the IRC server does not respond properly to userlist requests, causing the userlist in the clients to stay empty.'
-__module_version__ = '0.2'
+__module_version__ = '0.2.1'
 __module_author__ = 'cryzed <cryzed@googlemail.com>'
 
 
 TWITCH_IRC_SERVER = 'tmi.twitch.tv'
 INITIAL_UPDATE_USERLIST_TIMEOUT = 3000
-UPDATE_USERLIST_TIMEOUT = 150000
+UPDATE_USERLIST_TIMEOUT = 15000
 RETRIEVE_USERLIST_TIMEOUT = 30000
 CHATTERS_URL_TEMPLATE = 'http://tmi.twitch.tv/group/user/%s/chatters'
 RAW_JOIN_COMMAND_TEMPLATE = 'RECV :{0}!~{0}@{0}.tmi.twitch.tv JOIN {1}'
