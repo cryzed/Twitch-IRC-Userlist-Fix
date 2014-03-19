@@ -68,11 +68,16 @@ def initial_update_userlist_callback(channel):
     return 0
 
 
+def update_userlist_callback(channel):
+    update_userlist(channel)
+    return 1
+
+
 def update_userlist(channel):
     channel_key = channel.server + channel.channel
 
     if not channel_key in userlists_updates:
-        return 1
+        return
 
     update = userlists_updates[channel_key]
     del userlists_updates[channel_key]
@@ -84,7 +89,7 @@ def update_userlist(channel):
         map(lambda nickname: mode('jtv', channel.channel, '+q', nickname, channel.context), update['staff'])
         map(lambda nickname: mode('jtv', channel.channel, '+a', nickname, channel.context), update['admins'])
         userlists[channel_key] = update
-        return 1
+        return
 
     userlist = userlists[channel_key]
     joined_moderators = set(update['moderators']) - set(userlist['moderators'])
@@ -104,7 +109,7 @@ def update_userlist(channel):
     map(lambda nickname: mode('jtv', channel.channel, '+a', nickname, channel.context), joined_admins)
 
     userlists[channel_key] = update
-    return 1
+    return
 
 
 def main(word, word_eol, userdata):
@@ -129,7 +134,7 @@ def main(word, word_eol, userdata):
 
     # Initial userlist update, approximately 3 seconds after starting retrieve_userlist_update_thread.
     hexchat.hook_timer(INITIAL_UPDATE_USERLIST_TIMEOUT, initial_update_userlist_callback, channel)
-    hexchat.hook_timer(UPDATE_USERLIST_TIMEOUT, update_userlist, channel)
+    hexchat.hook_timer(UPDATE_USERLIST_TIMEOUT, update_userlist_callback, channel)
 
 
 if __name__ == '__main__':
