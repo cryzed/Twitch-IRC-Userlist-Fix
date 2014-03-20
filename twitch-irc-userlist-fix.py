@@ -5,7 +5,7 @@ import threading
 
 __module_name__ = 'Twitch IRC Userlist Fix'
 __module_description__ = 'XChat/HexChat plugin that periodically retrieves the userlist for all joined channels on the Twitch IRC servers from their website. This plugin is needed for some smaller channels in which the IRC server does not respond properly to userlist requests, causing the userlist in the clients to stay empty.'
-__module_version__ = '0.3'
+__module_version__ = '0.3.1'
 __module_author__ = 'cryzed <cryzed@googlemail.com>'
 
 
@@ -41,7 +41,7 @@ def part(nickname, channel, context=hexchat):
     context.command(command)
 
 
-def join(channel, nickname=None, context=hexchat, identity=None):
+def join(channel, nickname=None, identity=None, context=hexchat):
     # One of both should definitely be passed.
     assert nickname or identity
 
@@ -96,7 +96,7 @@ def update_userlist(channel):
 
     if not channel_key in userlists:
         chatters = update['viewers'] + update['moderators'] + update['staff'] + update['admins']
-        map(lambda nickname: join(channel.channel, nickname, channel.context), chatters)
+        map(lambda nickname: join(channel.channel, nickname, context=channel.context), chatters)
         map(lambda nickname: mode('jtv', channel.channel, '+o', nickname, channel.context), update['moderators'])
         map(lambda nickname: mode('jtv', channel.channel, '+q', nickname, channel.context), update['staff'])
         map(lambda nickname: mode('jtv', channel.channel, '+a', nickname, channel.context), update['admins'])
@@ -109,7 +109,7 @@ def update_userlist(channel):
     joined_admins = set(update['admins']) - set(userlist['admins'])
     joined_viewers = set(update['viewers']) - set(userlist['viewers'])
     joined = joined_moderators.union(joined_staff.union(joined_admins.union(joined_viewers)))
-    map(lambda nickname: join(channel.channel, nickname, channel.context), joined)
+    map(lambda nickname: join(channel.channel, nickname, context=channel.context), joined)
 
     chatters = set(userlist['viewers'] + userlist['moderators'] + userlist['staff'] + userlist['admins'])
     new_chatters = set(update['viewers'] + update['moderators'] + update['staff'] + update['admins'])
