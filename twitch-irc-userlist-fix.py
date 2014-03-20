@@ -5,7 +5,7 @@ import threading
 
 __module_name__ = 'Twitch IRC Userlist Fix'
 __module_description__ = 'XChat/HexChat plugin that periodically retrieves the userlist for all joined channels on the Twitch IRC servers from their website. This plugin is needed for some smaller channels in which the IRC server does not respond properly to userlist requests, causing the userlist in the clients to stay empty.'
-__module_version__ = '0.2.4'
+__module_version__ = '0.3'
 __module_author__ = 'cryzed <cryzed@googlemail.com>'
 
 
@@ -15,6 +15,7 @@ UPDATE_USERLIST_TIMEOUT = 15000
 RETRIEVE_USERLIST_TIMEOUT = 30000
 CHATTERS_URL_TEMPLATE = 'http://tmi.twitch.tv/group/user/%s/chatters'
 RAW_JOIN_COMMAND_TEMPLATE = 'RECV :{0}!~{0}@{0}.tmi.twitch.tv JOIN {1}'
+RAW_JOIN_COMMAND_TEMPLATE_IDENTITY = 'RECV :{0} JOIN {1}'
 RAW_PART_COMMAND_TEMPLATE = 'RECV :{0}!~{0}@{0}.tmi.twitch.tv PART {1}'
 RAW_MODE_COMMAND_TEMPLATE = 'RECV :{0}!~{0}@{0}.tmi.twitch.tv MODE {1} {2} {3}'
 
@@ -40,8 +41,14 @@ def part(nickname, channel, context=hexchat):
     context.command(command)
 
 
-def join(nickname, channel, context=hexchat):
-    command = RAW_JOIN_COMMAND_TEMPLATE.format(nickname, channel)
+def join(channel, nickname=None, context=hexchat, identity=None):
+    # One of both should definitely be passed.
+    assert nickname or identity
+
+    if identity:
+        command = RAW_JOIN_COMMAND_TEMPLATE_IDENTITY.format(identity, channel)
+    else:
+        command = RAW_JOIN_COMMAND_TEMPLATE.format(nickname, channel)
     context.command(command)
 
 
@@ -89,7 +96,7 @@ def update_userlist(channel):
 
     if not channel_key in userlists:
         chatters = update['viewers'] + update['moderators'] + update['staff'] + update['admins']
-        map(lambda nickname: join(nickname, channel.channel, channel.context), chatters)
+        map(lambda nickname: join(channel.channel, nickname, channel.context), chatters)
         map(lambda nickname: mode('jtv', channel.channel, '+o', nickname, channel.context), update['moderators'])
         map(lambda nickname: mode('jtv', channel.channel, '+q', nickname, channel.context), update['staff'])
         map(lambda nickname: mode('jtv', channel.channel, '+a', nickname, channel.context), update['admins'])
@@ -102,7 +109,7 @@ def update_userlist(channel):
     joined_admins = set(update['admins']) - set(userlist['admins'])
     joined_viewers = set(update['viewers']) - set(userlist['viewers'])
     joined = joined_moderators.union(joined_staff.union(joined_admins.union(joined_viewers)))
-    map(lambda nickname: join(nickname, channel.channel, channel.context), joined)
+    map(lambda nickname: join(channel.channel, nickname, channel.context), joined)
 
     chatters = set(userlist['viewers'] + userlist['moderators'] + userlist['staff'] + userlist['admins'])
     new_chatters = set(update['viewers'] + update['moderators'] + update['staff'] + update['admins'])
@@ -117,11 +124,23 @@ def update_userlist(channel):
     return
 
 
-def unload_callback(hook):
-    hexchat.unhook(hook)
+def privmsg_callback(word, word_eol, userdata):
+    identity = word[0][1:]
+    nickname = identity.split('!', 1)[0]
+    users = hexchat.get_list('users')
+
+    if not nickname in [user.nick for user in users]:
+        channel = word[2]
+        join(channel, identity=identity)
+
+    return hexchat.EAT_NONE
 
 
-def main(word, word_eol, userdata):
+def unload_callback(hooks):
+    map(hexchat.unhook, hooks)
+
+
+def end_of_names_callback(word, word_eol, userdata):
     server = hexchat.get_info('server')
     if not server == TWITCH_IRC_SERVER or len(hexchat.get_list('users')) > 1:
         return
@@ -145,8 +164,14 @@ def main(word, word_eol, userdata):
     hexchat.hook_timer(INITIAL_UPDATE_USERLIST_TIMEOUT, initial_update_userlist_callback, channel)
     hexchat.hook_timer(UPDATE_USERLIST_TIMEOUT, update_userlist_callback, channel)
 
+    return hexchat.EAT_NONE
+
 
 if __name__ == '__main__':
-    hook = hexchat.hook_server('366', main)
-    hexchat.hook_unload(unload_callback, hook)
+    hooks = [
+        hexchat.hook_server('366', end_of_names_callback),
+        hexchat.hook_server('PRIVMSG', privmsg_callback)
+    ]
+
+    hexchat.hook_unload(unload_callback, hooks)
     print __module_name__, __module_version__, 'loaded successfully.'
