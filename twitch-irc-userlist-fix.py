@@ -5,7 +5,7 @@ import threading
 
 __module_name__ = 'Twitch IRC Userlist Fix'
 __module_description__ = 'XChat/HexChat plugin that periodically retrieves the userlist for all joined channels on the Twitch IRC servers from their website. This plugin is needed for some smaller channels in which the IRC server does not respond properly to userlist requests, causing the userlist in the clients to stay empty.'
-__module_version__ = '0.2.3'
+__module_version__ = '0.2.4'
 __module_author__ = 'cryzed <cryzed@googlemail.com>'
 
 
@@ -21,7 +21,7 @@ RAW_MODE_COMMAND_TEMPLATE = 'RECV :{0}!~{0}@{0}.tmi.twitch.tv MODE {1} {2} {3}'
 
 userlists = {}
 userlists_updates = {}
-userlist_update_lock = threading.Semaphore()
+userlists_updates_lock = threading.Semaphore()
 
 
 class start_new_thread(threading.Thread):
@@ -63,7 +63,7 @@ def retrieve_userlist_update_thread(url, channel_key):
         return
 
     userlist = json.load(response)['chatters']
-    with userlist_update_lock:
+    with userlists_updates_lock:
         userlists_updates[channel_key] = userlist
 
 
@@ -80,7 +80,7 @@ def update_userlist_callback(channel):
 def update_userlist(channel):
     channel_key = channel.server + channel.channel
 
-    with userlist_update_lock:
+    with userlists_updates_lock:
         if not channel_key in userlists_updates:
             return
 
@@ -149,3 +149,4 @@ def main(word, word_eol, userdata):
 if __name__ == '__main__':
     hook = hexchat.hook_server('366', main)
     hexchat.hook_unload(unload_callback, hook)
+    print __module_name__, __module_version__, 'loaded successfully.'
