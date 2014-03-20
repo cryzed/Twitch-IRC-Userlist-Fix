@@ -18,8 +18,10 @@ RAW_JOIN_COMMAND_TEMPLATE = 'RECV :{0}!~{0}@{0}.tmi.twitch.tv JOIN {1}'
 RAW_PART_COMMAND_TEMPLATE = 'RECV :{0}!~{0}@{0}.tmi.twitch.tv PART {1}'
 RAW_MODE_COMMAND_TEMPLATE = 'RECV :{0}!~{0}@{0}.tmi.twitch.tv MODE {1} {2} {3}'
 
+
 userlists = {}
 userlists_updates = {}
+userlist_update_lock = threading.Semaphore()
 
 
 class start_new_thread(threading.Thread):
@@ -60,7 +62,8 @@ def retrieve_userlist_update_thread(url, channel_key):
         return
 
     userlist = json.load(response)['chatters']
-    userlists_updates[channel_key] = userlist
+    with userlist_update_lock:
+        userlists_updates[channel_key] = userlist
 
 
 def initial_update_userlist_callback(channel):
@@ -76,11 +79,12 @@ def update_userlist_callback(channel):
 def update_userlist(channel):
     channel_key = channel.server + channel.channel
 
-    if not channel_key in userlists_updates:
-        return
+    with userlist_update_lock:
+        if not channel_key in userlists_updates:
+            return
 
-    update = userlists_updates[channel_key]
-    del userlists_updates[channel_key]
+        update = userlists_updates[channel_key]
+        del userlists_updates[channel_key]
 
     if not channel_key in userlists:
         chatters = update['viewers'] + update['moderators'] + update['staff'] + update['admins']
